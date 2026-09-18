@@ -2,6 +2,10 @@
 
 #include "ship/window/gui/Gui.h"
 
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchImpl.h"
+#endif
+
 #include <cstring>
 #include <utility>
 #include <string>
