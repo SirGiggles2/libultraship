@@ -17,8 +17,13 @@ static AppletHookCookie applet_hook_cookie;
 static bool isRunning = true;
 static bool hasFocus = true;
 static bool isShowingVirtualKeyboard = true;
+// Which clock service is up. Before 8.0.0 the CPU clock is set through pcv, after that
+// through clkrst; neither may be called without its matching initialise.
+static bool clkrstReady = false;
+static bool pcvReady = false;
 
 void DetectAppletMode();
+void SetCpuClock(Ship::SwitchProfiles profile);
 
 static void on_applet_hook(AppletHookType hook, void* param);
 
@@ -36,8 +41,10 @@ void Ship::Switch::Init(SwitchPhase phase) {
             appletSetGamePlayRecordingState(true);
             appletHook(&applet_hook_cookie, on_applet_hook, NULL);
             appletSetFocusHandlingMode(AppletFocusHandlingMode_NoSuspend);
-            if (!hosversionBefore(8, 0, 0)) {
-                clkrstInitialize();
+            if (hosversionBefore(8, 0, 0)) {
+                pcvReady = R_SUCCEEDED(pcvInitialize());
+            } else {
+                clkrstReady = R_SUCCEEDED(clkrstInitialize());
             }
             break;
     }
@@ -47,7 +54,18 @@ void Ship::Switch::Exit() {
 #ifdef DEBUG
     socketExit();
 #endif
-    clkrstExit();
+    // Put the CPU back to stock before tearing the session down, so an exit while
+    // overclocked does not leave the console warm for the next homebrew.
+    SetCpuClock(Ship::STOCK);
+    if (clkrstReady) {
+        clkrstExit();
+        clkrstReady = false;
+    }
+    if (pcvReady) {
+        pcvExit();
+        pcvReady = false;
+    }
+    appletUnhook(&applet_hook_cookie);
     appletSetGamePlayRecordingState(false);
 }
 
@@ -80,11 +98,14 @@ void Ship::Switch::ImGuiSetupFont(ImFontAtlas* fonts) {
 }
 
 void Ship::Switch::ImGuiProcessEvent(bool wantsTextInput) {
+    // Null whenever the active item is not a text field, which is most frames.
     ImGuiInputTextState* state = ImGui::GetInputTextState(ImGui::GetActiveID());
 
     if (wantsTextInput) {
         if (!isShowingVirtualKeyboard) {
-            state->ClearText();
+            if (state != nullptr) {
+                state->ClearText();
+            }
 
             isShowingVirtualKeyboard = true;
             SDL_StartTextInput();
@@ -115,24 +136,32 @@ void Ship::Switch::GetDisplaySize(int* width, int* height) {
     }
 }
 
-void Ship::Switch::ApplyOverclock(void) {
-    SwitchProfiles perfMode = (SwitchProfiles)CVarGetInteger("gSwitchPerfMode", (int)Ship::MAXIMUM);
+void SetCpuClock(Ship::SwitchProfiles profile) {
+    if (profile < Ship::MAXIMUM || profile > Ship::POWERSAVINGM3) {
+        return;
+    }
 
-    if (perfMode >= 0 && perfMode <= Ship::POWERSAVINGM3) {
-        if (hosversionBefore(8, 0, 0)) {
-            pcvSetClockRate(PcvModule_CpuBus, SWITCH_CPU_SPEEDS_VALUES[perfMode]);
-        } else {
-            ClkrstSession session = { 0 };
-            clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
-            clkrstSetClockRate(&session, SWITCH_CPU_SPEEDS_VALUES[perfMode]);
+    if (hosversionBefore(8, 0, 0)) {
+        if (pcvReady) {
+            pcvSetClockRate(PcvModule_CpuBus, SWITCH_CPU_SPEEDS_VALUES[profile]);
+        }
+    } else if (clkrstReady) {
+        ClkrstSession session = { 0 };
+        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModuleId_CpuBus, 3))) {
+            clkrstSetClockRate(&session, SWITCH_CPU_SPEEDS_VALUES[profile]);
             clkrstCloseSession(&session);
         }
     }
 }
 
+void Ship::Switch::ApplyOverclock(void) {
+    // Stock rather than maximum by default: an overclock is a deliberate choice, not
+    // something a port should impose on every console that runs it.
+    SetCpuClock((Ship::SwitchProfiles)CVarGetInteger(CVAR_SWITCH_PERF_MODE, (int)Ship::STOCK));
+}
+
 void Ship::Switch::PrintErrorMessageToScreen(const char* str, ...) {
     consoleInit(NULL);
-    srand(time(0));
 
     va_list args;
     va_start(args, str);
@@ -161,14 +190,7 @@ static void on_applet_hook(AppletHookType hook, void* param) {
             hasFocus = focus_state == AppletFocusState_InFocus;
 
             if (!hasFocus) {
-                if (hosversionBefore(8, 0, 0)) {
-                    pcvSetClockRate(PcvModule_CpuBus, SWITCH_CPU_SPEEDS_VALUES[Ship::STOCK]);
-                } else {
-                    ClkrstSession session = { 0 };
-                    clkrstOpenSession(&session, PcvModuleId_CpuBus, 3);
-                    clkrstSetClockRate(&session, SWITCH_CPU_SPEEDS_VALUES[Ship::STOCK]);
-                    clkrstCloseSession(&session);
-                }
+                SetCpuClock(Ship::STOCK);
             } else {
                 Ship::Switch::ApplyOverclock();
                 // reinitialize audio subsystem to fix audio problems after resuming from sleep
@@ -188,42 +210,46 @@ static void on_applet_hook(AppletHookType hook, void* param) {
     }
 }
 
+// Shown under the error text on the console screen. Kept short so they fit a single line
+// at the bottom of a 80x45 console.
 const char* RandomTexts[] = {
-    "Psst, don't forget to blame Melon",
-    "Potsanity when?",
-    "Why are you acting so random?",
-    "Enough! My ship sails in the morning",
-    "Do you want 2 or 7 of those?",
-    "Lamp oil, rope, bombs you want it, it's yours my friend as long as you have enough rupees",
-    "You can build it yourself",
-    "Descargar para android",
-    "Made with <3 by the Harbour Masters!",
-    "They say that Kenix is not a developer",
-    "Squadala we're off",
-    "They say one once saw an equals not get set equals",
-    "This is the port all true gamers dock at",
-    "Enhancements? Times Savers? Cheats? You want them? They're yours my friend!",
-    "They say you gotta have the BIIIIG salad",
-    "They say Louis stopped working on the imports so he can focus on the exports",
-    "They say ZAPD is good software",
+    "Guh-huh!",
+    "DNI Y RUOY ETUB",
+    "Somebody's been eating my notes",
+    "Bottles says hi",
+    "Mumbo no like this",
+    "That tickles!",
+    "Not enough jiggies",
+    "Kazooie is asleep. Do not disturb.",
 };
+
+static const char* RandomText() {
+    static bool seeded = false;
+    if (!seeded) {
+        srand((unsigned)time(nullptr));
+        seeded = true;
+    }
+    return RandomTexts[rand() % (sizeof(RandomTexts) / sizeof(RandomTexts[0]))];
+}
 
 void DetectAppletMode() {
     AppletType at = appletGetAppletType();
     if (at == AppletType_Application || at == AppletType_SystemApplication)
         return;
 
-    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HYou've launched the Ship while in Applet mode."
-                                            "\x1b[4;2HPlease relaunch while in full-memory mode."
-                                            "\x1b[5;2HHold R when opening any game to enter HBMenu."
-                                            "\x1b[44;2H%s.",
-                                            RandomTexts[rand() % (sizeof(RandomTexts) / sizeof(RandomTexts[0]))]);
+    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HThis was launched in applet mode, which does not have"
+                                            "\x1b[3;2Henough memory to run the game."
+                                            "\x1b[5;2HRelaunch in full-memory mode: hold R while opening any"
+                                            "\x1b[6;2Hinstalled game to reach the homebrew menu."
+                                            "\x1b[44;2H%s",
+                                            RandomText());
 }
 
 void Ship::Switch::ThrowMissingOTR(std::string OTRPath) {
-    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HYou've launched the Ship without the OTR file."
-                                            "\x1b[4;2HPlease relaunch making sure %s exists."
-                                            "\x1b[44;2H%s.",
-                                            OTRPath.c_str(), RandomTexts[rand() % (sizeof(RandomTexts) / sizeof(RandomTexts[0]))]);
+    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HCould not find %s."
+                                            "\x1b[4;2HGenerate the .o2r files on a PC and copy them next to"
+                                            "\x1b[5;2Hthe .nro on your SD card, then relaunch."
+                                            "\x1b[44;2H%s",
+                                            OTRPath.c_str(), RandomText());
 }
 #endif
