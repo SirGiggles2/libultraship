@@ -108,6 +108,7 @@ void Ship::Switch::GetDisplaySize(int* width, int* height) {
             *height = 1080;
             break;
         case HANDHELD_MODE:
+        default:
             *width = 1280;
             *height = 720;
             break;

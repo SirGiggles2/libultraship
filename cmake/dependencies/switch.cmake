@@ -1,0 +1,66 @@
+# Switch dependency shims.
+#
+# devkitPro ships portlibs for most of what libultraship needs (SDL2, tinyxml2, zlib,
+# bzip2, libpng, ogg/vorbis, glad, mesa, libdrm_nouveau), but there is no portlib for
+# libzip, spdlog, fmt or nlohmann-json. Those get built from source here so the rest of
+# the build can keep using the same namespaced targets it uses everywhere else.
+#
+# Verified against devkitPro/pacman-packages: switch/ contains SDL2 and TinyXML2 but no
+# libzip, spdlog, fmt or json package.
+
+include(FetchContent)
+
+set(SWITCH_DEPS_BUILD_TESTING OFF CACHE INTERNAL "")
+
+#=================== nlohmann_json ===================
+# Header only, so nothing to compile for aarch64.
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(nlohmann_json)
+
+#=================== spdlog ===================
+# Uses its bundled fmt: there is no switch-fmt portlib either.
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.14.1
+)
+set(SPDLOG_FMT_EXTERNAL OFF CACHE INTERNAL "")
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE INTERNAL "")
+set(SPDLOG_BUILD_TESTS OFF CACHE INTERNAL "")
+set(SPDLOG_INSTALL OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(spdlog)
+
+#=================== libzip ===================
+# zlib comes from the switch-zlib portlib; everything optional is switched off so the
+# build does not go looking for OpenSSL, zstd or lzma on a platform that has none.
+FetchContent_Declare(
+    libzip
+    GIT_REPOSITORY https://github.com/nih-at/libzip.git
+    GIT_TAG v1.10.1
+)
+set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+set(BUILD_TOOLS OFF CACHE INTERNAL "")
+set(BUILD_REGRESS OFF CACHE INTERNAL "")
+set(BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(BUILD_DOC OFF CACHE INTERNAL "")
+set(ENABLE_COMMONCRYPTO OFF CACHE INTERNAL "")
+set(ENABLE_GNUTLS OFF CACHE INTERNAL "")
+set(ENABLE_MBEDTLS OFF CACHE INTERNAL "")
+set(ENABLE_OPENSSL OFF CACHE INTERNAL "")
+set(ENABLE_WINDOWS_CRYPTO OFF CACHE INTERNAL "")
+set(ENABLE_BZIP2 OFF CACHE INTERNAL "")
+set(ENABLE_LZMA OFF CACHE INTERNAL "")
+set(ENABLE_ZSTD OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(libzip)
+
+# libzip's CMake exports `zip`; the rest of the build expects the namespaced alias that
+# find_package(libzip) would have provided.
+if (TARGET zip AND NOT TARGET libzip::zip)
+    add_library(libzip::zip ALIAS zip)
+endif()

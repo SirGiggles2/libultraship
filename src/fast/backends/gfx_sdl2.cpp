@@ -804,10 +804,18 @@ bool GfxWindowBackendSDL2::CanDisableVsync() {
 }
 
 bool GfxWindowBackendSDL2::IsRunning() {
+#ifdef __SWITCH__
+    // Home menu exit requests arrive through the applet hook, not as an SDL event.
+    return mIsRunning && Ship::Switch::IsRunning();
+#else
     return mIsRunning;
+#endif
 }
 
 void GfxWindowBackendSDL2::Destroy() {
+#ifdef __SWITCH__
+    Ship::Switch::Exit();
+#endif
     // TODO: destroy _any_ resources used by SDL
     SDL_GL_DeleteContext(mCtx);
     SDL_DestroyWindow(mWnd);

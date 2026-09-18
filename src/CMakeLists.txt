@@ -92,16 +92,23 @@ if (GFX_DEBUG_DISASSEMBLER)
     target_link_libraries(libultraship PRIVATE libgfxd)
 endif()
 
-find_package(libzip REQUIRED)
+# On Switch these come from cmake/dependencies/switch.cmake (no portlibs exist for them).
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    find_package(libzip REQUIRED)
+endif()
 target_link_libraries(libultraship PRIVATE libzip::zip)
 
-find_package(nlohmann_json REQUIRED)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    find_package(nlohmann_json REQUIRED)
+endif()
 target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
 
 find_package(tinyxml2 REQUIRED)
 target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
 
-find_package(spdlog REQUIRED)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    find_package(spdlog REQUIRED)
+endif()
 target_link_libraries(libultraship PUBLIC spdlog::spdlog)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
