@@ -21,6 +21,9 @@ static bool isShowingVirtualKeyboard = true;
 // through clkrst; neither may be called without its matching initialise.
 static bool clkrstReady = false;
 static bool pcvReady = false;
+// Exit() is reached from two places - the SDL window backend's Destroy() and the game's
+// own shutdown - and either can be the only one to run, so it has to be idempotent.
+static bool switchInitialised = false;
 
 void DetectAppletMode();
 void SetCpuClock(Ship::SwitchProfiles profile);
@@ -33,6 +36,10 @@ void Ship::Switch::Init(SwitchPhase phase) {
             DetectAppletMode();
             break;
         case PostInitPhase:
+            if (switchInitialised) {
+                break;
+            }
+            switchInitialised = true;
             appletInitializeGamePlayRecording();
 #ifdef DEBUG
             socketInitializeDefault();
@@ -51,6 +58,10 @@ void Ship::Switch::Init(SwitchPhase phase) {
 }
 
 void Ship::Switch::Exit() {
+    if (!switchInitialised) {
+        return;
+    }
+    switchInitialised = false;
 #ifdef DEBUG
     socketExit();
 #endif
