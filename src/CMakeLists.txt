@@ -72,10 +72,13 @@ target_include_directories(libultraship
 
 #=================== Linking ===================
 if(INCLUDE_MPQ_SUPPORT)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS" AND NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
         target_link_libraries(libultraship PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,storm>")
     else()
         target_link_libraries(libultraship PUBLIC storm)
+    endif()
+    if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+        target_compile_definitions(storm PRIVATE -D_POSIX_C_SOURCE=200809L)
     endif()
 endif()
 
@@ -100,6 +103,18 @@ target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
 
 find_package(spdlog REQUIRED)
 target_link_libraries(libultraship PUBLIC spdlog::spdlog)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    target_link_libraries(libultraship PRIVATE Threads::Threads)
+    # glad provides the GL loader; libnx and the Mesa/nouveau stack provide the driver side.
+    target_link_libraries(libultraship PUBLIC
+        ${DEVKITPRO}/portlibs/switch/lib/libglad.a
+        EGL glapi drm_nouveau nx
+    )
+    target_include_directories(libultraship PUBLIC ${DEVKITPRO}/portlibs/switch/include)
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(THREADS_PREFER_PTHREAD_FLAG ON)

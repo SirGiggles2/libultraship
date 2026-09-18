@@ -35,6 +35,21 @@ target_sources(ImGui
 
 target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends PRIVATE ${SDL2_INCLUDE_DIRS})
 
+if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include)
+    # The Switch has no GL loader of imgui's own; glad is force-included so the backend
+    # picks up the function pointers, and gamepad nav is remapped to the Nintendo layout.
+    target_compile_definitions(ImGui PUBLIC
+        IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+        GL_GLEXT_PROTOTYPES=1
+        ImGuiKey_NavGamepadActivate=ImGuiKey_GamepadFaceRight
+        ImGuiKey_NavGamepadCancel=ImGuiKey_GamepadFaceDown
+        ImGuiKey_NavGamepadMenu=ImGuiKey_GamepadFaceUp
+        ImGuiKey_NavGamepadInput=ImGuiKey_GamepadFaceLeft
+    )
+    target_compile_options(ImGui PUBLIC -include glad/glad.h)
+endif()
+
 # ========= StormLib =============
 if(INCLUDE_MPQ_SUPPORT)
     set(stormlib_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/stormlib-optimizations.patch)

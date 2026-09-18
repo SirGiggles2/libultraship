@@ -48,7 +48,12 @@ std::shared_ptr<ControllerRumbleMapping> RumbleMappingFactory::CreateRumbleMappi
                                           ->GetControlDeck()
                                           ->GetConnectedPhysicalDeviceManager()
                                           ->GetConnectedSDLGamepadsForPort(portIndex)) {
+#ifdef __SWITCH__
+        // devkitPro's SDL2 reports rumble support that the HID vibration path does not deliver.
+        if (true) {
+#else
         if (!SDL_GameControllerHasRumble(gamepad)) {
+#endif
             continue;
         }
 

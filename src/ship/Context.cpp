@@ -27,6 +27,8 @@
 #include "ship/utils/AppleFolderManager.h"
 #include <unistd.h>
 #include <pwd.h>
+#elif defined(__SWITCH__)
+#include "ship/port/switch/SwitchImpl.h"
 #endif
 
 namespace Ship {
@@ -246,6 +248,10 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
     }
 
     if (!allowEmptyPaths && !GetResourceManager()->IsLoaded()) {
+#if defined(__SWITCH__)
+        // No windowing system yet at this point, so draw the error with the console renderer.
+        Ship::Switch::ThrowMissingOTR("the game's .o2r file");
+#else
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OTR file not found",
                                  "Main OTR file not found. Please generate one", nullptr);
         SPDLOG_ERROR("Main OTR file not found!");
@@ -253,8 +259,13 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
         // We need this exit to close the app when we dismiss the dialog
         exit(0);
 #endif
+#endif
         return false;
     }
+
+#ifdef __SWITCH__
+    Ship::Switch::Init(Ship::PostInitPhase);
+#endif
 
     return true;
 }
@@ -274,6 +285,8 @@ bool Context::InitControlDeck(std::shared_ptr<ControlDeck> controlDeck) {
     // Bring up the SDL game-controller subsystem here rather than in osContInit, so controllers work
     // in pre-game UI (e.g. navigating extraction prompts). osContInit still runs ControlDeck::Init(),
     // which needs the game's controllerBits.
+#ifndef __SWITCH__
+    // SDL's Switch port maps the built-in pads itself; there is no controller DB on the console.
     std::string controllerDb = LocateFileAcrossAppDirs("gamecontrollerdb.txt");
     int mappingsAdded = SDL_GameControllerAddMappingsFromFile(controllerDb.c_str());
     if (mappingsAdded >= 0) {
@@ -281,6 +294,7 @@ bool Context::InitControlDeck(std::shared_ptr<ControlDeck> controlDeck) {
     } else {
         SPDLOG_WARN("Failed to add SDL game controller mappings from \"{}\" ({})", controllerDb, SDL_GetError());
     }
+#endif
     SDL_SetHint(SDL_HINT_JOYSTICK_THREAD, "1");
     if (SDL_Init(SDL_INIT_GAMECONTROLLER) != 0) {
         SPDLOG_WARN("Failed to initialize SDL game controllers ({})", SDL_GetError());

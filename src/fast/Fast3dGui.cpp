@@ -20,6 +20,10 @@
 #include <SDL2/SDL_video.h>
 #endif
 
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchImpl.h"
+#endif
+
 #if defined(__ANDROID__) || defined(__IOS__)
 #include "ship/port/mobile/MobileImpl.h"
 #endif
@@ -58,7 +62,7 @@ bool Fast3dGui::SupportsViewports() {
     }
 #endif
 
-#if defined(__ANDROID__) || defined(__IOS__)
+#if defined(__ANDROID__) || defined(__IOS__) || defined(__SWITCH__)
     return false;
 #endif
 
@@ -70,7 +74,9 @@ void Fast3dGui::HandleWindowEvents(Fast::WindowEvent event) {
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
             ImGui_ImplSDL2_ProcessEvent(static_cast<const SDL_Event*>(event.Sdl.Event));
-#if defined(__ANDROID__) || defined(__IOS__)
+#ifdef __SWITCH__
+            Ship::Switch::ImGuiProcessEvent(ImGui::GetIO().WantTextInput);
+#elif defined(__ANDROID__) || defined(__IOS__)
             Ship::Mobile::ImGuiProcessEvent(ImGui::GetIO().WantTextInput);
 #endif
             break;

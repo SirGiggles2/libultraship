@@ -78,6 +78,11 @@ void Gui::Init() {
     mImGuiIo->Fonts->AddFontFromMemoryCompressedBase85TTF(fontawesome_compressed_data_base85, iconFontSize,
                                                           &iconsConfig, sIconsRanges);
 
+#ifdef __SWITCH__
+    Ship::Switch::ImGuiSetupFont(mImGuiIo->Fonts);
+    ImGui::GetStyle().ScaleAllSizes(2.0f);
+#endif
+
 #if defined(__ANDROID__)
     // Scale everything by 2 for Android
     ImGui::GetStyle().ScaleAllSizes(2.0f);
