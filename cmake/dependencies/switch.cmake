@@ -13,11 +13,12 @@ include(FetchContent)
 set(SWITCH_DEPS_BUILD_TESTING OFF CACHE INTERNAL "")
 
 #=================== nlohmann_json ===================
-# Header only, so nothing to compile for aarch64.
+# Header only, so nothing to compile for aarch64. v3.12.0 rather than 3.11.x because
+# 3.11's cmake_minimum_required(VERSION 3.1...3.14) is a hard error under CMake 4.
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
+    GIT_TAG v3.12.0
 )
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
@@ -39,16 +40,20 @@ FetchContent_MakeAvailable(spdlog)
 #=================== libzip ===================
 # zlib comes from the switch-zlib portlib; everything optional is switched off so the
 # build does not go looking for OpenSSL, zstd or lzma on a platform that has none.
+# v1.11.4 declares a 3.10 minimum, so it configures cleanly under CMake 4 as well.
 FetchContent_Declare(
     libzip
     GIT_REPOSITORY https://github.com/nih-at/libzip.git
-    GIT_TAG v1.10.1
+    GIT_TAG v1.11.4
 )
 set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
 set(BUILD_TOOLS OFF CACHE INTERNAL "")
 set(BUILD_REGRESS OFF CACHE INTERNAL "")
 set(BUILD_EXAMPLES OFF CACHE INTERNAL "")
 set(BUILD_DOC OFF CACHE INTERNAL "")
+set(BUILD_OSSFUZZ OFF CACHE INTERNAL "")
+set(LIBZIP_DO_INSTALL OFF CACHE INTERNAL "")
+set(ENABLE_FDOPEN OFF CACHE INTERNAL "")
 set(ENABLE_COMMONCRYPTO OFF CACHE INTERNAL "")
 set(ENABLE_GNUTLS OFF CACHE INTERNAL "")
 set(ENABLE_MBEDTLS OFF CACHE INTERNAL "")

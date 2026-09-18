@@ -19,6 +19,12 @@
 #elif USE_OPENGLES
 #include <SDL2/SDL.h>
 #include <GLES3/gl3.h>
+#elif defined(__SWITCH__)
+// devkitPro ships glad (0.1.x) as the loader for Mesa's nouveau driver. glad and
+// SDL_opengl.h both declare the GL entry points, so the Switch path takes glad only
+// and never includes SDL_opengl.h.
+#include <glad/glad.h>
+#include <SDL2/SDL.h>
 #else
 #include <SDL2/SDL.h>
 #define GL_GLEXT_PROTOTYPES 1
