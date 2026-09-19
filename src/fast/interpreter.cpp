@@ -7,7 +7,9 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <stdio.h>
-#ifndef _WIN32
+// No dynamic loading on Switch: an NRO is a single statically linked binary, so libnx
+// ships no dlfcn.h and there is nothing for dladdr to report.
+#if !defined(_WIN32) && !defined(__SWITCH__)
 #include <dlfcn.h>
 #endif
 
@@ -3974,6 +3976,11 @@ static bool IsValidResolvedAddress(uintptr_t addr) {
     HMODULE module = nullptr;
     return GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                               reinterpret_cast<LPCSTR>(addr), &module) != 0;
+#elif defined(__SWITCH__)
+    // One statically linked binary, so there are no loaded objects to check against and
+    // nothing is mapped this low. An address in the segmented range down here is an
+    // unresolved segment address, not a real pointer.
+    return false;
 #else
     // For non-Windows platforms, check whether the address belongs to a loaded object.
     Dl_info info;
