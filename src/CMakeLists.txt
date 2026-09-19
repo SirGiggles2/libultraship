@@ -96,7 +96,11 @@ endif()
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
     find_package(libzip REQUIRED)
 endif()
-target_link_libraries(libultraship PRIVATE libzip::zip)
+# PUBLIC, not PRIVATE: ship/resource/archive/O2rArchive.h is a public header and it
+# includes <zip.h>, so anything consuming libultraship needs libzip's include directory.
+# On desktop this went unnoticed because libzip is installed system-wide; on Switch it is
+# built from source, so the path only reaches consumers through the link interface.
+target_link_libraries(libultraship PUBLIC libzip::zip)
 
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
     find_package(nlohmann_json REQUIRED)
