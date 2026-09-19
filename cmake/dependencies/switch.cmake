@@ -10,6 +10,13 @@
 
 include(FetchContent)
 
+# newlib hides its POSIX declarations when __STRICT_ANSI__ is defined, which is what a
+# plain -std=c++20 gives you. spdlog's bundled fmt calls fileno(), so the dependencies
+# built here need GNU extensions and _GNU_SOURCE (newlib honours it via sys/features.h).
+set(CMAKE_C_EXTENSIONS ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+add_compile_definitions(_GNU_SOURCE)
+
 set(SWITCH_DEPS_BUILD_TESTING OFF CACHE INTERNAL "")
 
 #=================== nlohmann_json ===================
@@ -36,6 +43,13 @@ set(SPDLOG_BUILD_EXAMPLE OFF CACHE INTERNAL "")
 set(SPDLOG_BUILD_TESTS OFF CACHE INTERNAL "")
 set(SPDLOG_INSTALL OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(spdlog)
+
+# Belt and braces: spdlog sets its own CXX_STANDARD on the target, which resets the
+# extensions default, so pin them back on and define _GNU_SOURCE for the target itself.
+if (TARGET spdlog)
+    set_target_properties(spdlog PROPERTIES C_EXTENSIONS ON CXX_EXTENSIONS ON)
+    target_compile_definitions(spdlog PRIVATE _GNU_SOURCE)
+endif()
 
 #=================== libzip ===================
 # zlib comes from the switch-zlib portlib; everything optional is switched off so the
