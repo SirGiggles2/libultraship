@@ -44,15 +44,21 @@ if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
         ${DEVKITPRO}/portlibs/switch/include
         ${DEVKITPRO}/portlibs/switch/include/SDL2
     )
-    # The Switch has no GL loader of imgui's own; glad is force-included so the backend
-    # picks up the function pointers, and gamepad nav is remapped to the Nintendo layout.
+    # The Switch has no GL loader of imgui's own, so glad is force-included for the
+    # backend to pick up the function pointers.
+    #
+    # IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS: imgui's "open this path in the shell" helper
+    # is implemented with fork/execvp, which newlib does not provide. imgui already
+    # disables it for 3DS and iOS; Switch needs the same and upstream has no case for it.
+    #
+    # The A/B swap for the Nintendo layout used to be done by redefining the
+    # ImGuiKey_NavGamepad* macros, which collide with imgui_internal.h's own definitions
+    # of the same names and produced a redefinition warning per translation unit. imgui
+    # 1.91 exposes io.ConfigNavSwapGamepadButtons for exactly this, set in Gui.cpp.
     target_compile_definitions(ImGui PUBLIC
         IMGUI_IMPL_OPENGL_LOADER_CUSTOM
         GL_GLEXT_PROTOTYPES=1
-        ImGuiKey_NavGamepadActivate=ImGuiKey_GamepadFaceRight
-        ImGuiKey_NavGamepadCancel=ImGuiKey_GamepadFaceDown
-        ImGuiKey_NavGamepadMenu=ImGuiKey_GamepadFaceUp
-        ImGuiKey_NavGamepadInput=ImGuiKey_GamepadFaceLeft
+        IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
     )
     target_compile_options(ImGui PUBLIC -include glad/glad.h)
 endif()

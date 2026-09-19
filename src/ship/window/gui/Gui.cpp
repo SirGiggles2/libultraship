@@ -85,6 +85,11 @@ void Gui::Init() {
 #ifdef __SWITCH__
     Ship::Switch::ImGuiSetupFont(mImGuiIo->Fonts);
     ImGui::GetStyle().ScaleAllSizes(2.0f);
+    // A confirms and B cancels on a Nintendo pad, which is the other way round from
+    // imgui's default. This replaces an older approach that redefined the
+    // ImGuiKey_NavGamepad* macros - those names are already #defined in
+    // imgui_internal.h, so it warned on every translation unit that included it.
+    mImGuiIo->ConfigNavSwapGamepadButtons = true;
 #endif
 
 #if defined(__ANDROID__)

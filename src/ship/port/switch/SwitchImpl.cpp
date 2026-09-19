@@ -9,6 +9,7 @@
 #include "ship/audio/Audio.h"
 
 #include <imgui_internal.h>
+#include <string>
 
 #define DOCKED_MODE 1
 #define HANDHELD_MODE 0
@@ -127,6 +128,21 @@ void Ship::Switch::ImGuiProcessEvent(bool wantsTextInput) {
             SDL_StopTextInput();
         }
     }
+}
+
+// devkitPro's SDL2 for Switch does not implement the clipboard, but imgui's SDL2 backend
+// installs handlers that call both entry points unconditionally, so they have to resolve.
+// The console has no system clipboard to talk to; a process-local buffer at least makes
+// copy and paste work within the port's own UI, which is all that referenced them.
+static std::string sClipboard;
+
+extern "C" char* SDL_GetClipboardText(void) {
+    return SDL_strdup(sClipboard.c_str());
+}
+
+extern "C" int SDL_SetClipboardText(const char* text) {
+    sClipboard = (text != nullptr) ? text : "";
+    return 0;
 }
 
 bool Ship::Switch::IsRunning() {
