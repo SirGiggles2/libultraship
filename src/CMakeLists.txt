@@ -103,7 +103,24 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
 endif()
 target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
 
-find_package(tinyxml2 REQUIRED)
+# devkitPro's switch-tinyxml2 portlib is tinyxml2 6.0.0, which predates the namespaced
+# CMake targets: its install(EXPORT) carries no NAMESPACE, so the package provides
+# tinyxml2_static rather than tinyxml2::tinyxml2. GLOBAL promotes the imported target so
+# the alias below is usable from the directories that link libultraship.
+if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    find_package(tinyxml2 REQUIRED GLOBAL)
+    if (NOT TARGET tinyxml2::tinyxml2)
+        if (TARGET tinyxml2_static)
+            add_library(tinyxml2::tinyxml2 ALIAS tinyxml2_static)
+        elseif (TARGET tinyxml2)
+            add_library(tinyxml2::tinyxml2 ALIAS tinyxml2)
+        else()
+            message(FATAL_ERROR "tinyxml2 was found but exports no usable target")
+        endif()
+    endif()
+else()
+    find_package(tinyxml2 REQUIRED)
+endif()
 target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
 
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
