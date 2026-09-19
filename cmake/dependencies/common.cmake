@@ -36,7 +36,14 @@ target_sources(ImGui
 target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends PRIVATE ${SDL2_INCLUDE_DIRS})
 
 if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
-    target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include)
+    # imgui's SDL2 backend includes <SDL.h> unqualified, so the SDL2 subdirectory has to
+    # be on the include path in its own right - portlibs/include alone only resolves
+    # <SDL2/SDL.h>. SDL2_INCLUDE_DIRS is empty here because find_package(SDL2) runs in
+    # the game's scope, not this one.
+    target_include_directories(ImGui PRIVATE
+        ${DEVKITPRO}/portlibs/switch/include
+        ${DEVKITPRO}/portlibs/switch/include/SDL2
+    )
     # The Switch has no GL loader of imgui's own; glad is force-included so the backend
     # picks up the function pointers, and gamepad nav is remapped to the Nintendo layout.
     target_compile_definitions(ImGui PUBLIC
